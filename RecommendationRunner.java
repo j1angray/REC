@@ -1,8 +1,42 @@
 
+import java.io.*;
 import java.util.*;
+import org.json.*;
 
 public class RecommendationRunner implements Recommender {
     
+    public static void main(String[] args) throws JSONException 
+	{
+	  RecommendationRunner rr = new RecommendationRunner();
+	  ArrayList<String> movieId = rr.getItemsToRate();
+	  
+	  MovieDatabase moviedata = new MovieDatabase();
+      moviedata.initialize("ratedmoviesfull.csv");
+          
+      JSONArray ja =  new JSONArray();
+      for(String id: movieId){
+          //System.out.println(id + "  " + moviedata.getTitle(id));
+          JSONObject jo = new JSONObject();
+          jo.put(id, moviedata.getTitle(id));
+          ja.put(jo);
+      }
+	  
+	  //System.out.println(ja.getJSONObject(0).toString());
+	  
+	  try (FileWriter file = new FileWriter("end/torate.json")) {
+          //write JSONArray to the file
+          file.write(ja.toString()); 
+          file.flush();
+
+      } catch (IOException e) {
+          e.printStackTrace();
+      }
+	  
+	  rr.writeHTML(movieId); 
+	  
+	  rr.printRecommendationsFor("561"); // Should be the last rater in the database
+	}
+	
     public ArrayList<String> getItemsToRate(){
         /*
          * return a list of strings representing movie IDs 
@@ -27,8 +61,7 @@ public class RecommendationRunner implements Recommender {
                 ItemsToRate.add(filteredMovie.get(itemIndex));
             }
         }
-        
-        /*
+        /*       
         System.out.println(ItemsToRate.size() + " movies selected finally.");
         for(String id: ItemsToRate){
             System.out.println(id + "  " + moviedata.getTitle(id));  
@@ -50,7 +83,7 @@ public class RecommendationRunner implements Recommender {
 
         FourthRatings frRatings = new FourthRatings();
         int minimalRaters = 5;
-        int numSimilarRaters = 10;
+        int numSimilarRaters = 50;
         
         ArrayList<Rating> AvgRatings = frRatings.getSimilarRatings(webRaterID, numSimilarRaters, minimalRaters);
         
@@ -58,16 +91,21 @@ public class RecommendationRunner implements Recommender {
         //System.out.println("\nFound " + numRecommend + " similar movies.\n");
         
         StringBuilder sb = new StringBuilder();
-        sb.append( "<h2>Movie Recommendations based on your Rates</h2>"
-        + "<style> td {padding: 6px; border: 1px solid black; text-align: center;} th {background: black; color: white; font-weight: bold; padding: 6px; border: 1px solid grey; text-align: center;} </style>");
+        sb.append( "<html><body style = \"background-color:#dce7f3;\"><h1 style = 'font-family:Arial; text-align:center; font-style:italic;' > Movie Recommendations based on your Rates</h1>"
+        + "<style> td {padding: 6px; border: 1px solid black; text-align: center;} th {background: black; color: white; font-weight: bold; padding: 6px; border: 1px solid grey; text-align: center;} "
+        		+"table {margin-left: auto; margin-right: auto;}</style>");
         
-        sb.append("<table> <tr> <th>Recommendation Order</th> <th>Movie Title</th> </tr>");
+        sb.append("<table> <tr> <th>Title</th> <th>Genre</th> </tr>");
         
         for(int i = 0; i < numRecommend; i++){
-            String title = moviedata.getTitle(AvgRatings.get(i).getItem());
-            sb.append("<tr> <td>" + (i+1) + "</td><td>" + title + "</td> </tr>");
+        		String id = AvgRatings.get(i).getItem();
+            String title = moviedata.getTitle(id);
+            String ref = "http://www.imdb.com/title/tt"+id+"/";
+            String genre = moviedata.getGenres(id);
+            sb.append("<tr> <td><a href=" + ref + ">" + title + "</td> <td>"+ genre +"</td> </tr>");
         }
-        sb.append("</table>");
+        sb.append("</table><h2 style = 'font-family:Arial; text-align:center; font-style:italic; font-variant: small-caps;'>Enjoy!</h2>" + 
+        		"</body></html>");
         
         if (numRecommend == 0){
             System.out.println("No matching movies Found according to your rates. Sorry!");
@@ -75,6 +113,51 @@ public class RecommendationRunner implements Recommender {
         else{
             System.out.println(sb.toString());
         }
+         
+        
+  	  	try (FileWriter file = new FileWriter("end/output.html")) {
+  		  BufferedWriter writer = new BufferedWriter(file);
+  	      writer.write(sb.toString());
+  	      writer.newLine(); 
+  	      writer.close(); 
+  	  	} catch (Exception e) {
+  	    	  //catch any exceptions here
+  	  	}
+    }
+    
+    public void writeHTML(ArrayList<String> items) {
+    		StringBuilder sb = new StringBuilder();
+    		sb.append("<html><body style = \"background-color:#dce7f3;\">" 
+    				+ "<style> INPUT[type=submit] {font-weight: bold; display:block; margin: 0 auto;}</style>\n" 
+    				+ "<h1 style = \"font-family:Arial; text-align:center; font-style:italic;\">Rate the following movies to create a recommendation for you!</h1>"
+    				+ "<form action=\"\" method=\"post\">\n" 
+    				+ "<table style = \"margin-left: auto; margin-right: auto;\">\n" 
+    				+ " <tr> <th>Movie</th> <th>Rating</th> </tr>");
+    		
+    		MovieDatabase moviedata = new MovieDatabase();
+        moviedata.initialize("ratedmoviesfull.csv");
+        
+        for(String id: items){
+            String title = "<tr><td><a href=\"http://www.imdb.com/title/tt" + id + "/\">" + moviedata.getTitle(id) + "</td>"; 
+            String radio = "<td>";
+            for (int i = 0; i < 10; i++) {
+            		String button = "<input type=\"radio\" name=\"" + id + "\" value=\"" + i + "\">" + i +"</input>";
+            		radio += button;
+            }
+            radio += "</td>";
+            title = title + radio +"</tr>";
+            sb.append(title);
+        }
+    		sb.append("</table><input type=\"submit\" name=\"submit\" value=\"Submit\"></form> </body></html>");
+    		
+    		try (FileWriter file = new FileWriter("end/torate.html")) {
+    	  		  BufferedWriter writer = new BufferedWriter(file);
+    	  	      writer.write(sb.toString());
+    	  	      writer.newLine(); 
+    	  	      writer.close(); 
+    	  	  	} catch (Exception e) {
+    	  	    	  //catch any exceptions here
+    	  	  	}
     }
 
 }
