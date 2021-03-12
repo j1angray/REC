@@ -111,18 +111,18 @@ public class RecommendationRunner implements Recommender {
             System.out.println("No matching movies Found according to your rates. Sorry!");
         }
         else{
-            System.out.println(sb.toString());
+            //System.out.println(sb.toString());
+	        	try (FileWriter file = new FileWriter("end/output.html")) {
+	        		  BufferedWriter writer = new BufferedWriter(file);
+	        	      writer.write(sb.toString());
+	        	      writer.newLine(); 
+	        	      writer.close(); 
+	        	  	} catch (Exception e) {
+	        	    	  //catch any exceptions here
+	        	  	}
         }
          
         
-  	  	try (FileWriter file = new FileWriter("end/output.html")) {
-  		  BufferedWriter writer = new BufferedWriter(file);
-  	      writer.write(sb.toString());
-  	      writer.newLine(); 
-  	      writer.close(); 
-  	  	} catch (Exception e) {
-  	    	  //catch any exceptions here
-  	  	}
     }
     
     public void writeHTML(ArrayList<String> items) {
